@@ -1,0 +1,60 @@
+version: "3.7"
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: gprocess
+    container_name: gprocess-app
+    restart: unless-stopped
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    networks:
+      - gprocess
+
+  db:
+    image: 'mariadb:10'
+    container_name: gprocess-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - gprocess
+
+  nginx:
+    image: nginx:alpine
+    container_name: gprocess-nginx
+    restart: unless-stopped
+    ports:
+      - ${PROCESS_PORT}:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - gprocess
+
+  phpmyadmin:
+    container_name: gprocess-phpmyadmin
+    image: phpmyadmin
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+    networks:
+      - gprocess
+
+networks:
+  gprocess:
+    driver: bridge
